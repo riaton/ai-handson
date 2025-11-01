@@ -1,0 +1,21 @@
+{
+  "name": "mastra",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^20.19.24",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "@ai-sdk/amazon-bedrock": "^3.0.13",
+    "@mastra/core": "^0.15.2"
+  }
+}
