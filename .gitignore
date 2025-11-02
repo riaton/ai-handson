@@ -2,6 +2,7 @@
 
 # dependencies
 /mastra/node_modules
+/mastra/.mastra
 /node_modules
 /.pnp
 .pnp.js
@@ -36,6 +37,3 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
-# mastra
-/mastra/.mastra
