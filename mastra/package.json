@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "mastra dev"
   },
   "keywords": [],
   "author": "",
@@ -16,6 +17,6 @@
   },
   "dependencies": {
     "@ai-sdk/amazon-bedrock": "^3.0.13",
-    "@mastra/core": "^0.15.2"
+    "@mastra/core": "^0.23.3"
   }
 }
