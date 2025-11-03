@@ -43,7 +43,124 @@ export const handsonworkflow = createWorkflow({
             - 日本語の検索語もそのまま使用可能
             - レスポンスはCQLクエリのみを返してください
 
-            CQLクエリ:`
+            CQLクエリ:`;
+
+                try{
+                    const result = await assistantAgent.generate(prompt);
+                    const cql = result.text.trim()
+                    return { cql };
+                } catch(error){
+                    const fallbackCql = `text ~ "${inputData.query}"`
+                    return { cql: fallbackCql };
+                }
         }
     })
+).then(confluenceSearchPagesStep)
+.then(
+    createStep({
+        id: "select-first-page",
+        inputSchema: z.object({
+            pages: z.array(
+                z.object({
+                    id: z.string(),
+                    title: z.string(),
+                    url: z.string().optional(),
+                })
+            ),
+            total: z.number(),
+            error: z.string().optional(),
+        }),
+        outputSchema: z.object({
+            pageId: z.string(),
+            expand: z.string().optional(),
+        }),
+        execute: async({ inputData }) => {
+            const { pages, error } = inputData;
+            if(error){
+                throw new Error(`検索エラー: ${error}`);
+            }
+            if(!pages || pages.length === 0){
+                throw new Error("検索結果が見つかりませんでした");
+            }
+
+            const firstPage = pages[0];
+            return {
+                pageId: firstPage.id,
+                expand: "body.storage",
+            };
+        },
+    })
 )
+.then(confluenceGetPageStep)
+.then(
+    createStep({
+        id: "prepare-prompt",
+        inputSchema: z.object({
+            page: z.object({
+                id: z.string(),
+                title: z.string(),
+                url: z.string(),
+                content: z.string().optional(),
+            }),
+            error: z.string().optional(),
+        }),
+        outputSchema: z.object({
+            prompt: z.string(),
+            originalQuery: z.string(),
+            pageTitle: z.string(),
+            pageUrl: z.string(),
+        }),
+        execute: async({inputData, getInitData}) => {
+            const { page, error } = inputData;
+            const initData = getInitData();
+
+            if(error || !page || !page.content){
+                return{
+                    prompt: "ページの内容が取得できませんでした",
+                    originalQuery: initData.query || "",
+                    pageTitle: page?.title || "不明",
+                    pageUrl: page?.url || "",
+                };
+            };
+
+            const prompt = `以下のConfluenceページの内容に基づいて、ユーザの質問に答えてください。
+            ユーザの質問: ${initData.query}
+            ページタイトル: ${page.title}
+            ページ内容: ${page.content}
+            回答は簡潔でわかりやすく、必要に応じて箇条書きを使用して下さい。`;
+
+            return{
+                prompt,
+                originalQuery: initData.query || "",
+                pageTitle: page.title,
+                pageUrl: page.url,
+            };
+        },
+    })
+)
+.then(
+    createStep({
+        id: "assistant-response",
+        inputSchema: z.object({
+            prompt: z.string(),
+            originalQuery: z.string(),
+            pageTitle: z.string(),
+            pageUrl: z.string(),
+        }),
+        //ワークフローのoutputSchemaと一致させる
+        outputSchema: z.object({
+            text: z.string(),
+        }),
+        execute: async({ inputData }) => {
+            try{
+                const result = await assistantAgent.generate(inputData.prompt);
+                return {
+                    text: result.text,
+                };
+            } catch(error) {
+                return { text: "エラーが発生しました： " + String(error)}
+            }
+        },
+    })
+)
+.commit();
